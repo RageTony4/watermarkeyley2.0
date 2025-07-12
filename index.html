@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Watermarking Tool</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .controls-panel {
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        #canvas-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        canvas {
+            max-width: 100%;
+            max-height: 80vh;
+            object-fit: contain;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .drag-over {
+            border-color: #3b82f6;
+            background-color: #eff6ff;
+        }
+        .custom-file-upload {
+            border: 2px dashed #d1d5db;
+            padding: 1.5rem;
+            text-align: center;
+            cursor: pointer;
+            border-radius: 0.5rem;
+            transition: all 0.2s ease-in-out;
+        }
+        .custom-file-upload:hover {
+            border-color: #9ca3af;
+        }
+        .preset-btn {
+            flex-grow: 1;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <div class="container mx-auto p-4 lg:p-8">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-900">Image Watermarking Tool</h1>
+            <p class="text-lg text-gray-600 mt-2">Easily add text or image watermarks to your pictures.</p>
+        </header>
+
+        <div class="flex flex-col lg:flex-row gap-8">
+            <!-- Controls Panel -->
+            <div class="w-full lg:w-1/3 bg-white p-6 rounded-lg shadow-lg controls-panel">
+                <div class="space-y-6">
+                    <!-- 1. Image Upload -->
+                    <div>
+                        <h3 class="text-xl font-semibold mb-3">1. Upload Image</h3>
+                        <div id="image-drop-area" class="custom-file-upload">
+                            <label for="imageLoader" class="cursor-pointer">
+                                <span class="text-blue-600 font-semibold">Choose a file</span> or drag it here.
+                            </label>
+                            <input type="file" id="imageLoader" class="hidden" accept="image/jpeg, image/png, image/webp"/>
+                        </div>
+                         <p id="imageName" class="text-sm text-gray-500 mt-2 truncate"></p>
+                    </div>
+
+                    <!-- 2. Watermark Type -->
+                    <div>
+                        <h3 class="text-xl font-semibold mb-3">2. Watermark Type</h3>
+                        <div class="flex gap-4">
+                            <button id="text-watermark-btn" class="flex-1 bg-blue-500 text-white px-4 py-2 rounded-md shadow hover:bg-blue-600 transition-colors">Text</button>
+                            <button id="image-watermark-btn" class="flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded-md shadow hover:bg-gray-300 transition-colors">Image</button>
+                        </div>
+                    </div>
+
+                    <!-- Text Watermark Controls -->
+                    <div id="text-controls" class="space-y-4">
+                        <h4 class="text-lg font-medium">Text Watermark</h4>
+                        <div>
+                            <label for="watermarkText" class="block text-sm font-medium text-gray-700">Watermark Text</label>
+                            <input type="text" id="watermarkText" value="Your Watermark" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label for="font" class="block text-sm font-medium text-gray-700">Font</label>
+                                <select id="font" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                                    <option>Arial</option>
+                                    <option>Times New Roman</option>
+                                    <option selected>Inter</option>
+                                    <option>Verdana</option>
+                                    <option>Georgia</option>
+                                    <option>Courier New</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="color" class="block text-sm font-medium text-gray-700">Color</label>
+                                <input type="color" id="color" value="#ffffff" class="mt-1 block w-full h-10 border-gray-300 rounded-md shadow-sm">
+                            </div>
+                        </div>
+                         <div class="flex items-center space-x-4">
+                            <input type="checkbox" id="bold" class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                            <label for="bold" class="font-medium text-gray-700">Bold</label>
+                            <input type="checkbox" id="italic" class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                            <label for="italic" class="font-medium text-gray-700">Italic</label>
+                        </div>
+                    </div>
+
+                    <!-- Image Watermark Controls -->
+                    <div id="image-controls" class="hidden space-y-4">
+                        <h4 class="text-lg font-medium">Image Watermark</h4>
+                        <div id="watermark-drop-area" class="custom-file-upload">
+                             <label for="watermarkLoader" class="cursor-pointer">
+                                <span class="text-blue-600 font-semibold">Choose watermark</span> or drag it here.
+                            </label>
+                            <input type="file" id="watermarkLoader" class="hidden" accept="image/png"/>
+                        </div>
+                        <p id="watermarkName" class="text-sm text-gray-500 mt-2 truncate"></p>
+                    </div>
+
+                    <!-- 3. Customization -->
+                    <div>
+                        <h3 class="text-xl font-semibold mb-3">3. Customization</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label for="opacity" class="block text-sm font-medium text-gray-700">Opacity: <span id="opacityValue">0.5</span></label>
+                                <input type="range" id="opacity" min="0" max="1" step="0.05" value="0.5" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                            </div>
+                            <div>
+                                <label for="size" class="block text-sm font-medium text-gray-700">Size: <span id="sizeValue">40</span></label>
+                                <input type="range" id="size" min="10" max="200" step="2" value="40" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                            </div>
+                            <div>
+                                <label for="rotation" class="block text-sm font-medium text-gray-700">Rotation: <span id="rotationValue">0</span>°</label>
+                                <input type="range" id="rotation" min="0" max="360" step="1" value="0" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                            </div>
+                             <div class="flex items-center">
+                                <input type="checkbox" id="tileWatermark" class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                                <label for="tileWatermark" class="ml-2 block text-sm font-medium text-gray-900">Repeat / Tile Watermark</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 4. Position -->
+                    <div id="position-controls">
+                        <h3 class="text-xl font-semibold mb-3">4. Position</h3>
+                        <div class="grid grid-cols-3 gap-2">
+                             <button data-pos="top-left" class="pos-btn p-2 bg-gray-200 rounded-md hover:bg-gray-300">↖</button>
+                             <button data-pos="top-center" class="pos-btn p-2 bg-gray-200 rounded-md hover:bg-gray-300">↑</button>
+                             <button data-pos="top-right" class="pos-btn p-2 bg-gray-200 rounded-md hover:bg-gray-300">↗</button>
+                             <button data-pos="middle-left" class="pos-btn p-2 bg-gray-200 rounded-md hover:bg-gray-300">←</button>
+                             <button data-pos="center" class="pos-btn p-2 bg-gray-200 rounded-md hover:bg-gray-300">◎</button>
+                             <button data-pos="middle-right" class="pos-btn p-2 bg-gray-200 rounded-md hover:bg-gray-300">→</button>
+                             <button data-pos="bottom-left" class="pos-btn p-2 bg-gray-200 rounded-md hover:bg-gray-300">↙</button>
+                             <button data-pos="bottom-center" class="pos-btn p-2 bg-gray-200 rounded-md hover:bg-gray-300">↓</button>
+                             <button data-pos="bottom-right" class="pos-btn p-2 bg-gray-200 rounded-md hover:bg-gray-300">↘</button>
+                        </div>
+                        <p class="text-sm text-gray-500 mt-2">Or drag the watermark on the preview. (Disabled when tiled)</p>
+                    </div>
+
+                    <!-- 5. Preset Templates -->
+                    <div>
+                        <h3 class="text-xl font-semibold mb-3">5. Preset Templates</h3>
+                        <div class="flex flex-col sm:flex-row gap-2">
+                             <button id="preset-lines" class="preset-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-md shadow hover:bg-gray-300 transition-colors">Lines</button>
+                             <button id="preset-stars" class="preset-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-md shadow hover:bg-gray-300 transition-colors">Stars</button>
+                             <button id="preset-fake" class="preset-btn bg-red-500 text-white px-4 py-2 rounded-md shadow hover:bg-red-600 transition-colors">FAKE DETAILS</button>
+                        </div>
+                    </div>
+
+                    <!-- 6. Download -->
+                    <div>
+                        <h3 class="text-xl font-semibold mb-3">6. Download</h3>
+                         <div class="flex gap-4">
+                            <select id="format" class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                                <option value="image/png">PNG</option>
+                                <option value="image/jpeg">JPEG</option>
+                            </select>
+                            <button id="download" class="w-full bg-green-500 text-white px-4 py-2 rounded-md shadow hover:bg-green-600 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Download Image</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Image Preview -->
+            <div class="w-full lg:w-2/3 bg-gray-200 rounded-lg flex items-center justify-center p-4 min-h-[400px] lg:min-h-0" id="canvas-container-parent">
+                 <div id="canvas-container">
+                    <canvas id="canvas"></canvas>
+                    <p id="canvas-placeholder" class="text-gray-500 text-center">Upload an image to start watermarking</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Canvas and context
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+
+            // Image and watermark objects
+            let mainImage = null;
+            let watermarkImage = null;
+            let watermarkType = 'text'; // 'text' or 'image'
+
+            // Watermark properties
+            let watermark = {
+                text: 'Your Watermark',
+                font: 'Inter',
+                color: '#ffffff',
+                isBold: false,
+                isItalic: false,
+                opacity: 0.5,
+                size: 40,
+                rotation: 0,
+                x: 50,
+                y: 50,
+                isTiled: false
+            };
+
+            // Dragging state
+            let isDragging = false;
+            let dragStartX, dragStartY;
+
+            // DOM Elements
+            const imageLoader = document.getElementById('imageLoader');
+            const watermarkLoader = document.getElementById('watermarkLoader');
+            const downloadBtn = document.getElementById('download');
+            const canvasPlaceholder = document.getElementById('canvas-placeholder');
+
+            // Control panel elements
+            const textWatermarkBtn = document.getElementById('text-watermark-btn');
+            const imageWatermarkBtn = document.getElementById('image-watermark-btn');
+            const textControls = document.getElementById('text-controls');
+            const imageControls = document.getElementById('image-controls');
+            const watermarkTextInput = document.getElementById('watermarkText');
+            const fontSelect = document.getElementById('font');
+            const colorPicker = document.getElementById('color');
+            const boldCheckbox = document.getElementById('bold');
+            const italicCheckbox = document.getElementById('italic');
+            const opacitySlider = document.getElementById('opacity');
+            const sizeSlider = document.getElementById('size');
+            const rotationSlider = document.getElementById('rotation');
+            const tileCheckbox = document.getElementById('tileWatermark');
+            const opacityValue = document.getElementById('opacityValue');
+            const sizeValue = document.getElementById('sizeValue');
+            const rotationValue = document.getElementById('rotationValue');
+            const positionBtns = document.querySelectorAll('.pos-btn');
+            const positionControls = document.getElementById('position-controls');
+            const imageDropArea = document.getElementById('image-drop-area');
+            const watermarkDropArea = document.getElementById('watermark-drop-area');
+            const imageNameP = document.getElementById('imageName');
+            const watermarkNameP = document.getElementById('watermarkName');
+            const presetLinesBtn = document.getElementById('preset-lines');
+            const presetStarsBtn = document.getElementById('preset-stars');
+            const presetFakeBtn = document.getElementById('preset-fake');
+
+            // --- Event Listeners ---
+
+            // Image Upload
+            imageLoader.addEventListener('change', (e) => handleImageUpload(e.target.files[0]));
+            imageDropArea.addEventListener('dragover', (e) => { e.preventDefault(); e.stopPropagation(); imageDropArea.classList.add('drag-over'); });
+            imageDropArea.addEventListener('dragleave', (e) => { e.preventDefault(); e.stopPropagation(); imageDropArea.classList.remove('drag-over'); });
+            imageDropArea.addEventListener('drop', (e) => {
+                e.preventDefault(); e.stopPropagation(); imageDropArea.classList.remove('drag-over');
+                if (e.dataTransfer.files.length) handleImageUpload(e.dataTransfer.files[0]);
+            });
+
+            // Watermark Image Upload
+            watermarkLoader.addEventListener('change', (e) => handleWatermarkUpload(e.target.files[0]));
+            watermarkDropArea.addEventListener('dragover', (e) => { e.preventDefault(); e.stopPropagation(); watermarkDropArea.classList.add('drag-over'); });
+            watermarkDropArea.addEventListener('dragleave', (e) => { e.preventDefault(); e.stopPropagation(); watermarkDropArea.classList.remove('drag-over'); });
+            watermarkDropArea.addEventListener('drop', (e) => {
+                e.preventDefault(); e.stopPropagation(); watermarkDropArea.classList.remove('drag-over');
+                if (e.dataTransfer.files.length) handleWatermarkUpload(e.dataTransfer.files[0]);
+            });
+
+            // Watermark Type Switch
+            textWatermarkBtn.addEventListener('click', () => switchWatermarkType('text'));
+            imageWatermarkBtn.addEventListener('click', () => switchWatermarkType('image'));
+
+            // Control Listeners
+            watermarkTextInput.addEventListener('input', (e) => { watermark.text = e.target.value; redrawCanvas(); });
+            fontSelect.addEventListener('change', (e) => { watermark.font = e.target.value; redrawCanvas(); });
+            colorPicker.addEventListener('input', (e) => { watermark.color = e.target.value; redrawCanvas(); });
+            boldCheckbox.addEventListener('change', (e) => { watermark.isBold = e.target.checked; redrawCanvas(); });
+            italicCheckbox.addEventListener('change', (e) => { watermark.isItalic = e.target.checked; redrawCanvas(); });
+            opacitySlider.addEventListener('input', (e) => { watermark.opacity = parseFloat(e.target.value); opacityValue.textContent = watermark.opacity; redrawCanvas(); });
+            sizeSlider.addEventListener('input', (e) => { watermark.size = parseInt(e.target.value); sizeValue.textContent = watermark.size; redrawCanvas(); });
+            rotationSlider.addEventListener('input', (e) => { watermark.rotation = parseInt(e.target.value); rotationValue.textContent = `${watermark.rotation}°`; redrawCanvas(); });
+            tileCheckbox.addEventListener('change', (e) => {
+                watermark.isTiled = e.target.checked;
+                positionControls.style.display = watermark.isTiled ? 'none' : 'block';
+                redrawCanvas();
+            });
+            
+            positionBtns.forEach(btn => {
+                btn.addEventListener('click', (e) => setPosition(e.currentTarget.dataset.pos));
+            });
+
+            // Preset Listeners
+            presetLinesBtn.addEventListener('click', () => applyPreset('lines'));
+            presetStarsBtn.addEventListener('click', () => applyPreset('stars'));
+            presetFakeBtn.addEventListener('click', () => applyPreset('fake'));
+
+            // Download Listener
+            downloadBtn.addEventListener('click', downloadImage);
+
+            // Canvas Mouse Events for Dragging
+            canvas.addEventListener('mousedown', (e) => {
+                if (!mainImage || watermark.isTiled) return; // Disable dragging when tiled
+                const rect = canvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+
+                if (isMouseOverWatermark(mouseX, mouseY)) {
+                    isDragging = true;
+                    dragStartX = mouseX - watermark.x;
+                    dragStartY = mouseY - watermark.y;
+                    canvas.style.cursor = 'move';
+                }
+            });
+
+            canvas.addEventListener('mousemove', (e) => {
+                if (isDragging) {
+                    const rect = canvas.getBoundingClientRect();
+                    watermark.x = e.clientX - rect.left - dragStartX;
+                    watermark.y = e.clientY - rect.top - dragStartY;
+                    redrawCanvas();
+                } else if (mainImage && !watermark.isTiled) {
+                    const rect = canvas.getBoundingClientRect();
+                    const mouseX = e.clientX - rect.left;
+                    const mouseY = e.clientY - rect.top;
+                    canvas.style.cursor = isMouseOverWatermark(mouseX, mouseY) ? 'move' : 'default';
+                }
+            });
+            
+            canvas.addEventListener('mouseup', () => { isDragging = false; canvas.style.cursor = 'default'; });
+            canvas.addEventListener('mouseleave', () => { isDragging = false; canvas.style.cursor = 'default'; });
+
+
+            // --- Functions ---
+
+            function handleImageUpload(file) {
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    mainImage = new Image();
+                    mainImage.onload = () => {
+                        canvas.width = mainImage.width;
+                        canvas.height = mainImage.height;
+                        watermark.x = canvas.width / 2;
+                        watermark.y = canvas.height / 2;
+                        redrawCanvas();
+                        downloadBtn.disabled = false;
+                        canvasPlaceholder.style.display = 'none';
+                        canvas.style.display = 'block';
+                    };
+                    mainImage.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+                imageNameP.textContent = file.name;
+                imageNameP.title = file.name;
+            }
+
+            function handleWatermarkUpload(file) {
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    watermarkImage = new Image();
+                    watermarkImage.onload = () => {
+                        switchWatermarkType('image');
+                        redrawCanvas();
+                    };
+                    watermarkImage.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+                watermarkNameP.textContent = file.name;
+                watermarkNameP.title = file.name;
+            }
+
+            function switchWatermarkType(type) {
+                watermarkType = type;
+                if (type === 'text') {
+                    textWatermarkBtn.classList.replace('bg-gray-200', 'bg-blue-500');
+                    textWatermarkBtn.classList.replace('text-gray-700', 'text-white');
+                    imageWatermarkBtn.classList.replace('bg-blue-500', 'bg-gray-200');
+                    imageWatermarkBtn.classList.replace('text-white', 'text-gray-700');
+                    textControls.style.display = 'block';
+                    imageControls.style.display = 'none';
+                } else {
+                    imageWatermarkBtn.classList.replace('bg-gray-200', 'bg-blue-500');
+                    imageWatermarkBtn.classList.replace('text-gray-700', 'text-white');
+                    textWatermarkBtn.classList.replace('bg-blue-500', 'bg-gray-200');
+                    textWatermarkBtn.classList.replace('text-white', 'text-gray-700');
+                    textControls.style.display = 'none';
+                    imageControls.style.display = 'block';
+                    if (!watermarkImage) watermarkLoader.click();
+                }
+                redrawCanvas();
+            }
+
+            function redrawCanvas() {
+                if (!mainImage) return;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(mainImage, 0, 0);
+                ctx.save();
+                ctx.globalAlpha = watermark.opacity;
+
+                if (watermark.isTiled) {
+                    drawTiledWatermark();
+                } else {
+                    drawSingleWatermark();
+                }
+                ctx.restore();
+            }
+
+            function drawSingleWatermark() {
+                ctx.save();
+                ctx.translate(watermark.x, watermark.y);
+                ctx.rotate(watermark.rotation * Math.PI / 180);
+                if (watermarkType === 'text') {
+                    drawTextWatermark();
+                } else if (watermarkType === 'image' && watermarkImage) {
+                    drawImageWatermark();
+                }
+                ctx.restore();
+            }
+
+            function drawTiledWatermark() {
+                const padding = watermark.size * 2;
+                const { width: wmWidth, height: wmHeight } = getWatermarkDimensions();
+                const stepX = wmWidth + padding;
+                const stepY = wmHeight + padding;
+
+                for (let x = -padding; x < canvas.width + wmWidth; x += stepX) {
+                    for (let y = -padding; y < canvas.height + wmHeight; y += stepY) {
+                        ctx.save();
+                        ctx.translate(x, y);
+                        ctx.rotate(watermark.rotation * Math.PI / 180);
+                        if (watermarkType === 'text') {
+                            drawTextWatermark();
+                        } else if (watermarkType === 'image' && watermarkImage) {
+                            drawImageWatermark();
+                        }
+                        ctx.restore();
+                    }
+                }
+            }
+
+            function drawTextWatermark() {
+                const fontStyle = `${watermark.isItalic ? 'italic ' : ''}${watermark.isBold ? 'bold ' : ''}${watermark.size}px ${watermark.font}`;
+                ctx.font = fontStyle;
+                ctx.fillStyle = watermark.color;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(watermark.text, 0, 0);
+            }
+
+            function drawImageWatermark() {
+                const w = watermarkImage.width * (watermark.size / 100);
+                const h = watermarkImage.height * (watermark.size / 100);
+                ctx.drawImage(watermarkImage, -w / 2, -h / 2, w, h);
+            }
+            
+            function getWatermarkDimensions() {
+                if (watermarkType === 'text') {
+                    const fontStyle = `${watermark.isItalic ? 'italic ' : ''}${watermark.isBold ? 'bold ' : ''}${watermark.size}px ${watermark.font}`;
+                    ctx.font = fontStyle;
+                    const metrics = ctx.measureText(watermark.text);
+                    return { width: metrics.width, height: watermark.size };
+                } else if (watermarkType === 'image' && watermarkImage) {
+                    return {
+                        width: watermarkImage.width * (watermark.size / 100),
+                        height: watermarkImage.height * (watermark.size / 100)
+                    };
+                }
+                return { width: 0, height: 0 };
+            }
+
+            function isMouseOverWatermark(mouseX, mouseY) {
+                const { width, height } = getWatermarkDimensions();
+                ctx.save();
+                ctx.translate(watermark.x, watermark.y);
+                ctx.rotate(watermark.rotation * Math.PI / 180);
+                ctx.beginPath();
+                ctx.rect(-width / 2, -height / 2, width, height);
+                ctx.restore();
+                return ctx.isPointInPath(mouseX, mouseY);
+            }
+
+            function setPosition(pos) {
+                if (!mainImage || watermark.isTiled) return;
+                const { width, height } = getWatermarkDimensions();
+                const margin = 20;
+                switch (pos) {
+                    case 'top-left': watermark.x = width / 2 + margin; watermark.y = height / 2 + margin; break;
+                    case 'top-center': watermark.x = canvas.width / 2; watermark.y = height / 2 + margin; break;
+                    case 'top-right': watermark.x = canvas.width - width / 2 - margin; watermark.y = height / 2 + margin; break;
+                    case 'middle-left': watermark.x = width / 2 + margin; watermark.y = canvas.height / 2; break;
+                    case 'center': watermark.x = canvas.width / 2; watermark.y = canvas.height / 2; break;
+                    case 'middle-right': watermark.x = canvas.width - width / 2 - margin; watermark.y = canvas.height / 2; break;
+                    case 'bottom-left': watermark.x = width / 2 + margin; watermark.y = canvas.height - height / 2 - margin; break;
+                    case 'bottom-center': watermark.x = canvas.width / 2; watermark.y = canvas.height - height / 2 - margin; break;
+                    case 'bottom-right': watermark.x = canvas.width - width / 2 - margin; watermark.y = canvas.height - height / 2 - margin; break;
+                }
+                redrawCanvas();
+            }
+
+            function applyPreset(preset) {
+                switchWatermarkType('text');
+                watermark.isTiled = true;
+
+                switch(preset) {
+                    case 'lines':
+                        // Use a very long string of slashes to ensure they span across the image
+                        watermark.text = '////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////';
+                        watermark.size = 50;
+                        watermark.opacity = 0.15;
+                        watermark.rotation = 20;
+                        watermark.isBold = false;
+                        watermark.isItalic = false;
+                        watermark.color = '#000000';
+                        break;
+                    case 'stars':
+                        watermark.text = '★ ☆ ★';
+                        watermark.size = 60;
+                        watermark.opacity = 0.2;
+                        watermark.rotation = 0;
+                        watermark.isBold = false;
+                        watermark.isItalic = false;
+                        watermark.color = '#FFD700';
+                        break;
+                    case 'fake':
+                        watermark.text = 'FAKE DETAILS';
+                        watermark.size = 100;
+                        watermark.opacity = 0.25;
+                        watermark.rotation = -30;
+                        watermark.isBold = true;
+                        watermark.isItalic = false;
+                        watermark.color = '#FF0000';
+                        break;
+                }
+                updateControls();
+                redrawCanvas();
+            }
+
+            function updateControls() {
+                watermarkTextInput.value = watermark.text;
+                fontSelect.value = watermark.font;
+                colorPicker.value = watermark.color;
+                boldCheckbox.checked = watermark.isBold;
+                italicCheckbox.checked = watermark.isItalic;
+                opacitySlider.value = watermark.opacity;
+                opacityValue.textContent = watermark.opacity;
+                sizeSlider.value = watermark.size;
+                sizeValue.textContent = watermark.size;
+                rotationSlider.value = watermark.rotation;
+                rotationValue.textContent = `${watermark.rotation}°`;
+                tileCheckbox.checked = watermark.isTiled;
+                positionControls.style.display = watermark.isTiled ? 'none' : 'block';
+            }
+
+            function downloadImage() {
+                const format = document.getElementById('format').value;
+                const link = document.createElement('a');
+                link.download = `watermarked-image.${format.split('/')[1]}`;
+                link.href = canvas.toDataURL(format, format === 'image/jpeg' ? 0.9 : 1.0);
+                link.click();
+            }
+        });
+    </script>
+</body>
+</html>
